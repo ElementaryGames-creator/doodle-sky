@@ -1,0 +1,259 @@
+/* Fonts are system/fallback only (no external @import) — keeps the game
+   fully self-contained, which matters on platforms like Yandex Games that
+   sandbox/cache the build and may block third-party font requests. */
+
+:root{
+  --ink:#231942;
+  --cloud:#FFF8EC;
+  --coral:#FF6B5C;
+  --lemon:#FFD166;
+  --leaf:#3FBE7A;
+  --leaf-dark:#2E9760;
+  --sky-deep:#241a3d;
+  --blue:#4EA8DE;
+  --brown:#B8734A;
+  --font-display:'Baloo 2', 'Comic Sans MS', system-ui, sans-serif;
+  --font-body:'Nunito', system-ui, -apple-system, sans-serif;
+}
+
+*{box-sizing:border-box;}
+
+html,body{
+  height:100%;
+  margin:0;
+  background:radial-gradient(circle at 50% -10%, #3a2c5c 0%, #1b1530 55%, #120c22 100%);
+  font-family:var(--font-body);
+  color:var(--ink);
+  overflow:hidden;
+  position:fixed;
+  inset:0;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ---------- fixed virtual-resolution stage, scaled to fit ----------
+   #app is always exactly 400x650 CSS px (the "virtual resolution"); it
+   never reflows. fitStage() in game.js measures the available viewport
+   and applies transform:scale(...) so the whole composition shrinks or
+   grows as one unit (letterbox scaling), the same technique used in the
+   solitaire project. This keeps the game pixel-identical in layout at
+   100% / 125% / 150% browser zoom and on any screen, with no scrollbars
+   and nothing ever cropped. */
+#app{
+  position:fixed;
+  left:50%; top:50%;
+  width:400px; height:650px;
+  transform:translate(-50%,-50%) scale(var(--stage-scale, 1));
+  transform-origin:center center;
+  background:#89CFF0;
+  border-radius:26px;
+  overflow:hidden;
+  box-shadow:0 0 0 6px #120c22, 0 0 0 9px #4a3d72, 0 20px 50px rgba(0,0,0,0.55);
+  touch-action:none;
+  user-select:none;
+}
+
+canvas#gameCanvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+/* ---------- HUD ---------- */
+#hud{
+  position:absolute;
+  top:0; left:0; right:0;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  padding:12px 12px 0 12px;
+  pointer-events:none;
+  z-index:5;
+}
+.chip{
+  background:rgba(255,248,236,0.92);
+  border:3px solid var(--ink);
+  border-radius:14px;
+  padding:6px 12px;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:15px;
+  line-height:1.15;
+  box-shadow:3px 3px 0 rgba(35,25,66,0.35);
+}
+.chip small{
+  display:block;
+  font-family:var(--font-body);
+  font-weight:800;
+  font-size:10px;
+  letter-spacing:.04em;
+  color:#6b5f8a;
+  text-transform:uppercase;
+}
+#pauseBtn{
+  pointer-events:auto;
+  width:42px;height:42px;
+  border-radius:50%;
+  border:3px solid var(--ink);
+  background:rgba(255,248,236,0.92);
+  box-shadow:3px 3px 0 rgba(35,25,66,0.35);
+  font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  color:var(--ink);
+}
+#pauseBtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(35,25,66,0.35);}
+
+/* ---------- overlays ---------- */
+.screen{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:14px;
+  padding:26px;
+  text-align:center;
+  background:linear-gradient(180deg, rgba(137,207,240,0.97), rgba(94,150,196,0.97));
+  z-index:10;
+}
+.screen.hidden{display:none;}
+.hidden{display:none !important;}
+
+.title-wrap{position:relative;margin-bottom:2px;}
+.game-title{
+  font-family:var(--font-display);
+  font-weight:800;
+  font-size:44px;
+  color:var(--coral);
+  -webkit-text-stroke:3px var(--ink);
+  text-shadow:4px 4px 0 var(--ink);
+  letter-spacing:.01em;
+  margin:0;
+}
+.game-title span{color:var(--lemon);}
+.subtitle{
+  font-family:var(--font-body);
+  font-weight:800;
+  color:var(--ink);
+  font-size:14px;
+  margin:-6px 0 6px;
+  opacity:.85;
+}
+
+.doodle-btn{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:18px;
+  color:var(--ink);
+  background:var(--lemon);
+  border:3px solid var(--ink);
+  border-radius:16px;
+  padding:12px 30px;
+  box-shadow:4px 4px 0 var(--ink);
+  cursor:pointer;
+  min-width:210px;
+  transition:transform .05s;
+}
+.doodle-btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink);}
+.doodle-btn.secondary{background:var(--cloud);}
+.doodle-btn.coral{background:var(--coral);color:var(--cloud);}
+.doodle-btn.small{min-width:0;padding:8px 18px;font-size:14px;}
+.doodle-btn.ad{background:var(--blue);color:var(--cloud);font-size:15px;min-width:0;padding:10px 22px;}
+
+.hint{
+  font-size:12.5px;
+  font-weight:700;
+  color:var(--ink);
+  background:rgba(255,248,236,0.75);
+  border:2px dashed var(--ink);
+  border-radius:12px;
+  padding:8px 12px;
+  max-width:280px;
+  line-height:1.4;
+}
+
+.record-line{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:15px;
+  background:rgba(255,248,236,0.85);
+  border:2px solid var(--ink);
+  border-radius:10px;
+  padding:4px 14px;
+}
+
+/* customize screen */
+.skin-cards{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.skin-card{
+  background:rgba(255,248,236,0.94);
+  border:3px solid var(--ink);
+  border-radius:16px;
+  padding:14px;
+  width:150px;
+  box-shadow:4px 4px 0 rgba(35,25,66,0.35);
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+.skin-card h3{
+  font-family:var(--font-display);
+  font-size:15px;
+  margin:0;
+}
+.preview-circle{
+  width:78px;height:78px;
+  border-radius:50%;
+  border:3px dashed var(--ink);
+  background:#e9f6ff;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.preview-circle img{width:100%;height:100%;object-fit:contain;}
+.preview-placeholder{font-size:26px;opacity:.5;}
+.skin-card input[type=file]{display:none;}
+.file-label{
+  font-family:var(--font-body);
+  font-weight:800;
+  font-size:11.5px;
+  background:var(--blue);
+  color:var(--cloud);
+  border:2px solid var(--ink);
+  border-radius:10px;
+  padding:6px 10px;
+  cursor:pointer;
+}
+.reset-label{
+  font-family:var(--font-body);
+  font-weight:800;
+  font-size:11px;
+  background:transparent;
+  color:var(--ink);
+  border:none;
+  text-decoration:underline;
+  cursor:pointer;
+  opacity:.7;
+}
+
+/* game over badge */
+.new-record-badge{
+  font-family:var(--font-display);
+  font-weight:800;
+  color:var(--ink);
+  background:var(--lemon);
+  border:3px solid var(--ink);
+  border-radius:12px;
+  padding:5px 14px;
+  transform:rotate(-3deg);
+  box-shadow:3px 3px 0 rgba(35,25,66,0.35);
+  animation:pop .5s ease;
+}
+@keyframes pop{from{transform:rotate(-3deg) scale(0.5);opacity:0;}to{transform:rotate(-3deg) scale(1);opacity:1;}}
+
+.btn-row{display:flex; gap:10px; flex-wrap:wrap; justify-content:center;}
+
+/* No max-width media query here on purpose: #app is a fixed 400x650
+   composition scaled uniformly by fitStage() in game.js, so it already
+   looks identical (just smaller) on narrow screens without reflowing. */

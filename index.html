@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Дудл Скай</title>
+<link rel="stylesheet" href="style.css">
+<!-- VK Bridge (VK Mini Apps SDK). Outside VK this request simply fails/is
+     blocked and the game falls back to fully local mode. -->
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+</head>
+<body>
+
+<div id="app">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="chip">
+      <small>Очки</small>
+      <span id="scoreVal">0</span>
+    </div>
+    <button id="pauseBtn" title="Пауза">❚❚</button>
+  </div>
+
+  <!-- MENU -->
+  <div id="menuScreen" class="screen">
+    <div class="title-wrap">
+      <h1 class="game-title" id="gameTitle">Дудл <span>Скай</span></h1>
+    </div>
+    <p class="subtitle">прыгай выше облаков ☁</p>
+    <div class="record-line">🏆 Рекорд: <span id="menuHighScore">0</span></div>
+    <button class="doodle-btn coral" id="playBtn">▶ Играть</button>
+    <button class="doodle-btn secondary" id="customizeBtn">🎨 Свой скин</button>
+    <p class="hint">Управление: касание экрана — левая треть влево, правая треть вправо, середина — стрельба (держи, чтобы стрелять очередью). Или клавиатура: ← → / A D (Ф В на русской раскладке), пробел или W/Ц — выстрел. Прыгай по платформам, отстреливай врагов, лови бонусы и не падай вниз!</p>
+  </div>
+
+  <!-- CUSTOMIZE -->
+  <div id="customizeScreen" class="screen hidden">
+    <h2 style="font-family:var(--font-display);margin:0 0 4px;">Настройка скинов</h2>
+    <div class="skin-cards">
+      <div class="skin-card">
+        <h3>Твой Дудл</h3>
+        <div class="preview-circle" id="playerPreviewWrap"><span class="preview-placeholder">🟢</span></div>
+        <label class="file-label">Загрузить фото
+          <input type="file" id="playerSkinInput" accept="image/*">
+        </label>
+        <button class="reset-label" id="playerSkinReset">Сбросить</button>
+      </div>
+      <div class="skin-card">
+        <h3>Враги</h3>
+        <div class="preview-circle" id="enemyPreviewWrap"><span class="preview-placeholder">🟣</span></div>
+        <label class="file-label">Загрузить фото
+          <input type="file" id="enemySkinInput" accept="image/*">
+        </label>
+        <button class="reset-label" id="enemySkinReset">Сбросить</button>
+      </div>
+    </div>
+    <p class="hint">Лучше всего подходят квадратные изображения с прозрачным фоном (PNG). Картинка сохранится в этом браузере.</p>
+    <button class="doodle-btn secondary" id="backFromCustomize">← Назад</button>
+  </div>
+
+  <!-- PAUSE -->
+  <div id="pauseScreen" class="screen hidden">
+    <h2 style="font-family:var(--font-display);font-size:30px;margin:0;">Пауза</h2>
+    <button class="doodle-btn coral" id="resumeBtn">▶ Продолжить</button>
+    <button class="doodle-btn ad hidden" id="pauseShieldAdBtn">📺 Щит за рекламу</button>
+    <button class="doodle-btn secondary" id="restartFromPauseBtn">⟲ Заново</button>
+    <button class="doodle-btn secondary" id="menuFromPauseBtn">☰ В меню</button>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="gameOverScreen" class="screen hidden">
+    <h2 style="font-family:var(--font-display);font-size:32px;margin:0;color:var(--coral);-webkit-text-stroke:2px var(--ink);">Игра окончена</h2>
+    <div id="newRecordBadge" class="new-record-badge hidden">🌟 Новый рекорд!</div>
+    <div class="record-line">Очки: <span id="finalScore">0</span></div>
+    <div class="record-line">🏆 Рекорд: <span id="finalHighScore">0</span></div>
+    <button class="doodle-btn ad hidden" id="continueBtn">📺 Продолжить (реклама)</button>
+    <div class="btn-row">
+      <button class="doodle-btn coral" id="restartBtn">⟲ Играть снова</button>
+      <button class="doodle-btn secondary" id="menuBtn">☰ В меню</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
