@@ -219,13 +219,18 @@ function initVKBridge() {
   vkBridge.send('VKWebAppInit').then(() => {
     vkAvailable = true;
 
-    // Ask VK to give the iframe a narrower/taller window on desktop web, so
-    // it's closer to the game's own portrait aspect ratio (400x650) instead
-    // of the default box VK picks (which left big empty side margins here).
-    // Range allowed by VK: width 630-1000, height 500-4050. Platform: Web
-    // only — mobile clients ignore/no-op this since they're already
-    // full-width there.
-    vkBridge.send('VKWebAppResizeWindow', { width: 630, height: 960 }).catch(() => {});
+    // Ask VK to give the iframe a narrower window on desktop web, so it's
+    // closer to the game's own portrait aspect ratio (400x650) instead of
+    // the default (wider) box VK picks, which left big empty side margins.
+    // We deliberately KEEP the height VK already gave us (window.innerHeight
+    // at this point reflects that default) rather than picking our own
+    // number — VK's default height is already sized to fit the visible
+    // viewport, and overriding it with a guessed value risks pushing content
+    // below the fold and forcing the whole vk.ru page to scroll.
+    // Allowed range: width 630-1000, height 500-4050. Platform: Web only —
+    // mobile clients ignore/no-op this since they're already full-width there.
+    const vkResizeHeight = Math.max(500, Math.min(4050, window.innerHeight || 700));
+    vkBridge.send('VKWebAppResizeWindow', { width: 630, height: vkResizeHeight }).catch(() => {});
 
     // read the platform language from VK's launch params on startup.
     vkBridge.send('VKWebAppGetLaunchParams').then((params) => {
