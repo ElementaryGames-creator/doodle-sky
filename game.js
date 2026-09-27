@@ -211,6 +211,12 @@ function initVKLifecycleEvents() {
   });
 }
 
+function requestVKWindowResize() {
+  if (!vkAvailable) return;
+  const height = Math.max(500, Math.min(4050, window.innerHeight || 700));
+  vkBridge.send('VKWebAppResizeWindow', { width: 630, height }).catch(() => {});
+}
+
 function initVKBridge() {
   if (typeof vkBridge === 'undefined') return;
 
@@ -229,8 +235,15 @@ function initVKBridge() {
     // below the fold and forcing the whole vk.ru page to scroll.
     // Allowed range: width 630-1000, height 500-4050. Platform: Web only —
     // mobile clients ignore/no-op this since they're already full-width there.
-    const vkResizeHeight = Math.max(500, Math.min(4050, window.innerHeight || 700));
-    vkBridge.send('VKWebAppResizeWindow', { width: 630, height: vkResizeHeight }).catch(() => {});
+    requestVKWindowResize();
+
+    // Re-request if the user resizes their browser window after load (rare,
+    // but cheap to handle — debounced so we don't spam the bridge call).
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(requestVKWindowResize, 300);
+    });
 
     // read the platform language from VK's launch params on startup.
     vkBridge.send('VKWebAppGetLaunchParams').then((params) => {
