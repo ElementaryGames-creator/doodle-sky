@@ -211,12 +211,6 @@ function initVKLifecycleEvents() {
   });
 }
 
-function requestVKWindowResize() {
-  if (!vkAvailable) return;
-  const height = Math.max(500, Math.min(4050, window.innerHeight || 700));
-  vkBridge.send('VKWebAppResizeWindow', { width: 630, height }).catch(() => {});
-}
-
 function initVKBridge() {
   if (typeof vkBridge === 'undefined') return;
 
@@ -224,26 +218,6 @@ function initVKBridge() {
 
   vkBridge.send('VKWebAppInit').then(() => {
     vkAvailable = true;
-
-    // Ask VK to give the iframe a narrower window on desktop web, so it's
-    // closer to the game's own portrait aspect ratio (400x650) instead of
-    // the default (wider) box VK picks, which left big empty side margins.
-    // We deliberately KEEP the height VK already gave us (window.innerHeight
-    // at this point reflects that default) rather than picking our own
-    // number — VK's default height is already sized to fit the visible
-    // viewport, and overriding it with a guessed value risks pushing content
-    // below the fold and forcing the whole vk.ru page to scroll.
-    // Allowed range: width 630-1000, height 500-4050. Platform: Web only —
-    // mobile clients ignore/no-op this since they're already full-width there.
-    requestVKWindowResize();
-
-    // Re-request if the user resizes their browser window after load (rare,
-    // but cheap to handle — debounced so we don't spam the bridge call).
-    let resizeTimer = null;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(requestVKWindowResize, 300);
-    });
 
     // read the platform language from VK's launch params on startup.
     vkBridge.send('VKWebAppGetLaunchParams').then((params) => {
@@ -292,6 +266,26 @@ function maybeShowInterstitial() {
   }).catch(() => {});
 }
 
+// Shows a rewarded ad; resolves true only if the player actually got it.
+// On failure the button briefly says so, instead of silently doing nothing.
+function showRewardedAd(btn) {
+  if (!vkAvailable) return Promise.resolve(false);
+  const fail = (why) => {
+    console.warn('VK rewarded ad failed:', why);
+    if (btn && !btn.dataset.orig) {
+      btn.dataset.orig = btn.textContent;
+      btn.textContent = 'Реклама пока недоступна';
+      setTimeout(() => { btn.textContent = btn.dataset.orig; delete btn.dataset.orig; }, 2000);
+    }
+    return false;
+  };
+  return vkBridge.send('VKWebAppCheckNativeAds', { ad_format: 'reward' }).then((res) => {
+    if (!res || !res.result) return fail('no ad available');
+    return vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' })
+      .then((r) => (r && r.result) ? true : fail('not completed'));
+  }).catch((e) => fail(e));
+}
+
 // rewarded video → continue the run once after dying
 let reviveUsed = false;
 function offerRevive() {
@@ -299,13 +293,8 @@ function offerRevive() {
   continueBtn.classList.toggle('hidden', !(vkAvailable && !reviveUsed));
 }
 function watchAdAndRevive() {
-  if (!vkAvailable || reviveUsed) return;
-  vkBridge.send('VKWebAppCheckNativeAds', { ad_format: 'reward' }).then((res) => {
-    if (!res || !res.result) return;
-    return vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' });
-  }).then((res) => {
-    if (res && res.result) { reviveUsed = true; revivePlayer(); }
-  }).catch(() => {});
+  if (reviveUsed) return;
+  showRewardedAd(continueBtn).then((ok) => { if (ok) { reviveUsed = true; revivePlayer(); } });
 }
 // rewarded video from the pause menu → grant a shield bonus
 const pauseShieldAdBtn = document.getElementById('pauseShieldAdBtn');
@@ -314,18 +303,14 @@ function offerPauseShieldAd() {
   pauseShieldAdBtn.classList.toggle('hidden', !(vkAvailable && player && !player.shielded));
 }
 function watchAdForShield() {
-  if (!vkAvailable || !player || player.shielded) return;
-  vkBridge.send('VKWebAppCheckNativeAds', { ad_format: 'reward' }).then((res) => {
-    if (!res || !res.result) return;
-    return vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' });
-  }).then((res) => {
-    if (res && res.result) {
-      applyItem('shield');
-      popups.push({ x: player.x + player.w / 2, y: player.y - 10, text: 'ЩИТ!', life: 0.8 });
-      playSound('hit');
-      offerPauseShieldAd();
-    }
-  }).catch(() => {});
+  if (!player || player.shielded) return;
+  showRewardedAd(pauseShieldAdBtn).then((ok) => {
+    if (!ok) return;
+    applyItem('shield');
+    popups.push({ x: player.x + player.w / 2, y: player.y - 10, text: 'ЩИТ!', life: 0.8 });
+    playSound('hit');
+    offerPauseShieldAd();
+  });
 }
 
 function revivePlayer() {
@@ -1133,7 +1118,6 @@ function endGame() {
 /* -------------------------------- ui wiring ------------------------------------ */
 document.getElementById('playBtn').addEventListener('click', () => {
   ensureAudio();
-  try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch (e) {}
   startGame();
 });
 document.getElementById('customizeBtn').addEventListener('click', () => { state = 'customize'; showScreen('customize'); });
@@ -1187,17 +1171,22 @@ function fitStage() {
 
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
-  const rect = app.getBoundingClientRect(); // already reflects the CSS transform scale
-  canvas.width = Math.round(rect.width * dpr);
-  canvas.height = Math.round(rect.height * dpr);
-  const scale = (rect.width / LOGICAL_W) * dpr;
+  const cssScale = parseFloat(app.style.getPropertyValue('--stage-scale')) || 1;
+  canvas.width = Math.round(LOGICAL_W * cssScale * dpr);
+  canvas.height = Math.round(LOGICAL_H * cssScale * dpr);
+  const scale = (canvas.width / LOGICAL_W);
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 }
 
 function scheduleFit() {
   fitStage();
   resizeCanvas();
+  // the iframe/viewport may report its final size a moment later
+  // (e.g. after leaving fullscreen or switching VK layout) — re-measure
+  requestAnimationFrame(() => { fitStage(); resizeCanvas(); });
+  setTimeout(() => { fitStage(); resizeCanvas(); }, 250);
 }
+document.addEventListener('fullscreenchange', scheduleFit);
 window.addEventListener('resize', scheduleFit);
 window.addEventListener('orientationchange', scheduleFit);
 if (window.visualViewport) {
